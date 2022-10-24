@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game</title>
+    <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body style="margin:0px; overflow:hidden;border-width:300px; border-color:black">
+<!-- This div displats the score.-->
+<div id="score" style="background-color:black;color:gold; font-size:30px;
+font-weight:bold; font-family:Silkscreen;padding-top:10px;padding-left:30px">  
+    
+</div>
+<!-- here the images are imported for later use in the game -->
+<img id="invader" src="./assets/TieFighter.png" style="display:none" width="3%" height="auto">
+<img id="cannon" src="./assets/Xwing.png" style="display:none">
+<img id="star" src="./assets/star.png" style="display:none">
+<img id="xplosion" src="./assets/explosion.png" style="display:none">
+
+<!-- for this project, I used Canvas, which turned out to be very helpful -->
+<canvas id="canvas" width="1000" height="700" >
+
+<script>
+    
+    //Here i declare the global variables Im going to use
+
+        //these are the varibales for game management, like the canvas and the interval for refreshing the game 
+        var interval 
+        var canvas = document. getElementById("canvas")
+        var ctx = canvas.getContext("2d")
+        canvas.width= innerWidth
+        canvas.height= innerHeight
+
+    var invaderDy = -1 //invader initial velocity in Y axis
+
+    var invaders = [] //array to store invaders in 
+     
+    var stars = [] //array to store stars in 
+
+    var cannon = new Player(innerWidth-200,325, document.getElementById("cannon")) //player object created here
+
+    var cannonShots = [] // array to store the player shots in 
+
+    var invaderShot //variable to create the invader shot, there can only be 1 shot on screen 
+                    //(to stop the game from being too difficult)
+
+    var explosions = [] //array to store the explosion sprites
+
+    var xplosion = document.getElementById("xplosion") //loading explosion image into js 
+
+    var score = 0 // score variable
+
+    var spawnTimer = 0 //varibale to time the spawn rate of ships 
+   
+    var img = document.getElementById("invader") // loading invader image into js
+
+    var difficulty = 1 // difficulty multiplier, which is the x-axis velocity of the enemies (& the stars)
+
+    spawnRate = 500 //determines the spawn rate of enemies
+    
+    function Player (x,y,img,toggle){ //Player object
+        this.x = x // x coord
+        this.y = y // y coord
+        this.img = img // player image
+        
+    }
+
+    Player.prototype.draw = function(ctx){ //function to draw the character
+        ctx.drawImage(this.img, this.x, this.y, (innerWidth/100)*4 , (innerHeight/100)*7)
+    }
+
+    Player.prototype.move = function(toggle, dx, dy) { //function to update the players position
+        this.x += dx
+        this.y += dy
+    }
+
+    Player.prototype.fire = function(dx) { //funtion to fire a shot
+        cannonShots.push( new Shot(this.x+20, this.y+20, dx)) //adds a shot object into the cannonShots array, giving it the players coordinates and an initial velocity
+    }
+
+    Player.prototype.isHitBy = function(shot){ //detects hits for the player
+        function between(y, a, b){
+           return a < y &&  y < b
+        }
+        //returns true if the coordinates of the shot are inside the players coordinate
+        if (shot !=null) return between(shot.y, this.y, this.y+50) && between(shot.x+10, this.x, this.x+50)
+    }
+
+    function GameObject (x,y,img,toggle){//gameobject works for the stars and the enemies
+        this.x = x
+        this.y = y
+        this.img = img
+        this.active = true // determines wether the engine renders the object
+        this.toggle = toggle // determines the direction the sprite appears
+        this.dy = getRndInteger(1,4) // randomizes the vertical speed of the enemy
+
+
+    }
+
+    GameObject.prototype.draw = function(ctx){ //function draws the object only if it is active
+        this.active && ctx.drawImage(this.img, this.x, this.y, (innerWidth/100)*4 , (innerHeight/100)*7)
+    }
+
+    GameObject.prototype.move = function(toggle, dx, dy) {//this function updates the velocities of the object 
+        this.x += dx
+        if(toggle == true){ //toggles whether the object is moving up or down
+            
+            this.y += dy
+        }else{
+            
+            this.y -= dy
+        
+        }
+        
+       
+        
+
+    }
+
+    GameObject.prototype.fire = function(dx) { //creates the enemies' shots
+        return new Shot(this.x+20, this.y+20, dx)
+    }
+
+    GameObject.prototype.isHitBy = function(shot){ //detects if the enemy has been hit. only returns true if the enemy is active
+        function between(y, a, b){
+           return a < y &&  y < b
+        }
+        
+        return this.active && between(shot.y, this.y, this.y+50) && between(shot.x+10, this.x, this.x+50)
+    }
+
+
+    function Shot(x, y, dx){ //Shot object
+        this.x = x
+        this.y = y
+        this.dx = dx
+    }
+
+    Shot.prototype.move = function(){ // moves the shot, and returns true if the shot is not out of bounds
+
+        this.x += this.dx
+        return this.x > 0 && this.x <innerWidth
+    }
+
+    Shot.prototype.draw = function(ctx, ship){ //draws the shot in different colors depending on who shot it.
+        if (ship=="tie"){
+            ctx.fillStyle = "#00FF00"
+        }else{
+            ctx.fillStyle = "#FF0000"
+        }
+        
+        ctx.fillRect(this.x-1, this.y, 30, 3)
+    }
+
+    
+    
+    function createExplosion(x,y){ // creates the explosion and handles how it dissapears
+        score +=50 //adds 50 to the score
+        var i = explosions.length 
+        explosions.push(new GameObject(x,y, xplosion, true)) //adds the explosions to the array that stores them 
+        setTimeout(disappear, 200) // disappears the explosion after a timer
+        function disappear(){
+            explosions[i].active = false //finds the explosion created earlier, and deactivates it
+            explosions.splice(i,1) //removes the explosion from the array
+            if (explosions.length>0){ //if the array is still not empty, this method empties it. 
+                                        //this prevents explosions from staying on-screen
+                disappear()
+            }
+        }
+    }
+
+    
+    function draw(){ //draws everything on the screen
+        ctx.fillStyle = "black"
+        ctx.fillRect(0, 0, innerWidth, innerHeight) //screen is as big as window
+        invaders.forEach(inv => inv.draw(ctx)) //draws invaders
+        stars.forEach(st => st.draw(ctx))   //draws stars
+        explosions.forEach(x => x.draw(ctx)) //draws explosions
+        cannon.draw(ctx)        //draws the player
+        invaderShot && invaderShot.draw(ctx, "tie") //draws the invader shots with the tag so that the color is correct
+        for (var i=0; i<cannonShots.length; i++){ //draws all the player shots in the array
+            cannonShots[i].draw(ctx, "x")
+        }
+    }
+
+    function move(){ //function to move the game objects (update their positions)
+        
+        
+        for (var i=0; i<invaders.length; i++){ //this loop detects if any enemy is out of bounds,
+                                                //and if it is, it changes the value of their toggle,
+                                                //which makes them change direcion in the y-axis. 
+                                                //This makes enemies move up and down.
+            if(invaders[i].y <40){
+                invaders[i].toggle = true
+                
+            }else if(invaders[i].y >= innerHeight-200){
+                invaders[i].toggle = false
+            
+            }
+        }
+
+
+        if (score%(500*difficulty) == 0 && score >0){ //here, every time the score gets up to 500, the difficulty 
+                                                        //changes by one, and the spawn time for enemies is halved.
+                                                        //the limit for the span rate is 125
+            difficulty +=1
+            if (spawnRate>=125) spawnRate = spawnRate/2
+            
+        }
+        invaders.forEach(inv => inv.move(inv.toggle, difficulty, inv.dy))//this moves the tie fighters. Their velocity in the x-axis is the difficuly
+                                                                        //This way, as the difficulty increases, the enemies' speed increases too
+
+        for (var i=0; i<stars.length; i++){ //this moves the stars back to the beginning of the screen when they get out of bounds, at a random
+                                            // y coordinate, so it seems like there are infinite ones.
+            if(stars[i].x >= innerWidth){
+                
+                stars[i].x = 0
+                stars[i].y = getRndInteger(0, innerHeight)
+                
+            }
+        }
+        stars.forEach(inv => inv.move(inv.toggle, 0.5*difficulty, 0)) //this moves the stars across the screen
+                                                                        //As the game gets harder, the stars move faster. 
+
+        if (invaderShot && !invaderShot.move()){ //if the invaders' shot is not moving, and is onscreen, it is deleted. 
+            invaderShot = null 
+            
+        }
+
+        if (!invaderShot){ //here, if the invaders havent fired a shot, a random invader is selected to shoot. 
+                            //there can only be one invader shot on screen at once, or the game would become too difficult
+
+            var active = invaders.filter(i => i.active)
+            
+            if(active.length != 0){
+                var r = active[Math.floor(Math.random()*active.length)]
+                
+                invaderShot = r.fire(15)
+            }
+        }
+        for (var i=0; i<cannonShots.length; i++){ //here, it moves the player's shots, 
+                                                    // and if any get out of bounds, they are removed from the array.
+            
+            
+            if(cannonShots[i].x<0){
+                
+                cannonShots.splice(i,1)
+                
+            }else{
+                cannonShots[i].move()
+            }
+        }
+        
+        if(cannonShots.length > 0 ){ //here, it checks if any invader has been hit, and if any have been 
+                                        // they are deactivated and deleted from the array. An explosion 
+                                        //is created where the enemy was
+            for (var i=0; i<cannonShots.length; i++){
+                var hit = invaders.find(inv => inv.isHitBy(cannonShots[i]))
+            
+                if (hit) {
+                    hit.active = false
+                    createExplosion(hit.x, hit.y)
+                    
+                    cannonShots.splice(i,1)
+                }
+                    
+
+
+                
+            }
+        }
+    }
+
+    function isGameOver (){ //returns true if the player has been hit by the laser, or if the player has crashed
+                            //against an enemy.
+        return cannon.isHitBy(invaderShot) || invaders.find(inv => inv.isHitBy(cannon))
+    }
+
+
+    
+
+    function game(){ //this method is executed repeatedly, and it calls all the functions that are needed to 
+                    //to update the game, like draw() and move()
+
+        document.getElementById("score").innerHTML = "Score: " + score //displays the score
+
+        move() //calls the move() function so that coordinates are updated
+        draw() // calls the draw() function after the move() function so that the current coordinates are drawn.
+        executeMoves() // this function executes the actions that move the player
+
+        var t= true //this variable determines the toggle attribute of enemies, so that they cycle between going up and down at the beginning
+        spawnTimer +=5
+        if (spawnTimer%1000==0){ // when the spawntimer reaches a number, the toggle is changed, so enemies starting direction is changed
+            t = -t
+        }
+        
+        if (spawnTimer % (spawnRate) == 0){ //the spawnrate determines how often enemies spawn
+            
+            invaders.push(new GameObject( 0, getRndInteger(50, innerHeight-200), img, t)) //adds an enemy into the array
+        }
+        if (isGameOver()){ //handles gameOver situation
+
+            var xplosion = document.getElementById("xplosion") 
+            cannon.img = xplosion //changes the players ship into an explosion
+            setTimeout(function(){
+                clearInterval(interval) //after a short while (to let the explosion get rendered) the game gets frozen
+            },30)
+            sessionStorage.setItem("score", score); //Stores the score in localstorage
+
+            setTimeout(function(){
+                window.location.href = "death.html"; //takes the user to the game over page after a short while 
+                
+            }, 1000)
+            
+        }
+        
+        
+        
+    }
+
+
+    function init(){
+        
+        invaders.push(new GameObject( getRndInteger(0,innerWidth-1000), getRndInteger(50, innerHeight-200), img)) //spawns a new enemy
+        var str = document.getElementById("star")
+        for (var i = 0; i < 24; i++){ //generates the stars in random places
+            stars.push(new GameObject ( Math.floor(Math.random() * innerWidth), Math.floor(Math.random() * innerHeight), str))
+
+        }
+    }
+
+    function getRndInteger(min, max) {
+        return Math.floor(Math.random() * (max - min) ) + min; //function to get random integers more easily, as js has not built-in function
+    }
+
+    var controller = [0,0,0,0,0] //stores status of key inputs. each number represents a key. 0 means a key is not being pressed
+                                // 1 means a key is being pressed, and 3 means that the key needs to be lifted to be used again.
+                                // [0] is for the up arrow key
+                                // [1] is for the down arrow key
+                                // [2] is for the spacebar
+                                // [3] is for the left arrow key
+                                // [4] is for the right arrow key
+
+    function executeMoves() { // this function makes the player move when the controller has a certain values
+        if (controller[0]== 1 && cannon.y>30){ 
+            cannon.move(true, 0, -7) //moves the player up whenever he is not out of bounds and the controller position for that key is 1
+        }
+        if (controller[1]== 1 && cannon.y<innerHeight-200){
+            cannon.move(true, 0, 7) //moves the player down whenever he is not out of bounds and the controller position for that key is 1
+        }
+        if (controller[2]==1){
+            cannon.fire(-20) //fires a shot, and then changes the controller value to 3 so that it doesnt fire in automatic.
+                            // this way, the player can only shoot in semi-automatic
+            controller[2]=3
+        }
+        if (controller[3]== 1 && cannon.x>300){
+            cannon.move(true, -7, 0) //moves the player left whenever he is not out of bounds and the controller position for that key is 1
+        }
+        if (controller[4]== 1 && cannon.x<innerWidth-200){
+            
+            cannon.move(true, 7, 0) //moves the player right whenever he is not out of bounds and the controller position for that key is 1
+        }
+        
+
+        
+    }
+
+    function start(){ // first function to execute. handles booting up the game playing music and user input
+        sessionStorage.setItem("score", score);
+
+        init()//starts the game
+        var audio = new Audio('./assets/starwars.mp3');
+        audio.play(); //plays the music
+        
+        
+        document.addEventListener("keydown", (e) => { //whenever a keys is pressed down, the controller array stores a 1. 
+                                                        // in the position that corresponds to the key
+            if(e.keyCode==38){
+                controller[0] = 1
+            }
+            if(e.keyCode==40){
+                controller[1] = 1
+            }
+            if (e.keyCode == 32 && controller[2]==0){  //sets the value in the controller to 1 only when the key has been released.
+                                                        // if not, the player would shoot lasers constantly while the spacebar is pressed.
+                controller[2] = 1
+            }
+            if(e.keyCode==37){
+                controller[3] = 1
+            }
+            if(e.keyCode==39){
+                controller[4] = 1
+            }
+            
+        })
+        document.addEventListener("keyup", (e) => { //every time a key is released, the controller position corresponding 
+                                                    // to that key is turned back to 0
+            if(e.keyCode==38){
+                controller[0] = 0
+            }
+            if(e.keyCode==40){
+                controller[1] = 0
+            }
+            if (e.keyCode == 32 ) controller[2] = 0
+
+            if(e.keyCode==37){
+                controller[3] = 0
+            }
+            if(e.keyCode==39){
+                console.log("back lift")
+                controller[4] = 0
+            }
+            
+        })
+
+        //handling user input with the keydown, keyup events and the controller is better than to use keypress because keypress
+        // cannot handle multiple inputs at once. 
+        
+        interval = setInterval(game, 20)//executes the game() function every 20 milliseconds
+    }
+    
+    window.onload = start //when the window loads, the start() method is executed. 
+
+    
+
+        
+    
+   
+
+</script>
+</body>
+</html>

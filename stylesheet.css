@@ -1,0 +1,15 @@
+@font-face {
+    font-family: "Silkscreen";
+    src: url("./assets/slkscr.ttf")
+  }
+
+.start:hover{
+    color:white;
+    text-decoration: none;
+}
+
+.start{
+    font-family: Silkscreen;
+    color:black;
+    text-decoration:none;
+}

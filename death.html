@@ -1,0 +1,38 @@
+<!--this is the game over screen, the only code it has is it takes the score from game.html-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Death</title>
+    <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body style="background-color:black">
+    <img src="./assets/icon.png" style="display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 80px;
+    width: 20%;" >
+    <p style="color:yellow;margin-top:80px; margin-left:auto;margin-right:auto; font-family:Silkscreen;
+    width:40%;font-weight: bold; 
+    font-size:60px; text-align:center">You died!</p>
+    <div id="scorer" style="color:yellow;margin-top:10px; margin-left:auto;margin-right:auto; font-family:Silkscreen;
+    width:40%;font-weight: bold; 
+    font-size:35px; text-align:center">
+    </div>
+    <center>
+        <div style="background-color:goldenrod; border-radius:10px; 
+        color:black; font-family:sans-serif; font-weight:bold; 
+        font-size: 40px; width:30%;margin-top:50px">
+            <a href="game.html" class="start" >Try again</a>
+        </div>
+
+    </center>
+    <script>
+        var score = sessionStorage.getItem("score");
+        document.getElementById("scorer").innerHTML = "Your score: " + score
+        
+    </script>
+</body>
+</html>
