@@ -1,4 +1,4 @@
-_Description
+_Description_
 
 This game is a sidescroller where you’re an X-wing pilot fighting tie fighters. The aim is to
 achieve the highest score possible or last the longest until you die.
@@ -9,7 +9,7 @@ fighters appear, and they move faster.
 There is a main menu and a game over screen, where your score is displayed.
 ______________________________________________________________________________________________________________
 
-_Issues
+_Issues_
 
 First of all, getting the basic skeleton for the game was hard, as the movement and rendering of
 the objects was hard to get used to. I had to get used to the canvas, and the mechanics of
